@@ -5,6 +5,11 @@ https://jaxbline.gumroad.com/l/rertl
 
 https://discord.gg/htg3PWaWkU
 
+# Installation
+* Head to Releases and download the latest
+* Go into blender 4.0+ and head to add-ons/Plugins
+* Install from disk
+* Select the .py script
 
 # Requirments
 * Blender 4.0+
