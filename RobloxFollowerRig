@@ -1,10 +1,10 @@
 bl_info = {
     "name": "Roblox Follower Rig",
     "author": "Jax",
-    "version": (1, 3),
+    "version": (1, 4),
     "blender": (4, 0, 0),
     "location": "View3D > Jax's Stuff",
-    "description": "Set up Roblox Follower Rig",
+    "description": "Set up Roblox Follower Rig,
     "category": "Rigging",
 }
 
@@ -94,7 +94,6 @@ class ROBLOX_OT_follower_rig(Operator):
         modifier.object = armature
         modifier.use_vertex_groups = True
         
-        # basically die
         consolidate_materials(torso)
         
         self.report({'INFO'}, "Roblox Follower Rig setup complete")
@@ -108,7 +107,8 @@ class ROBLOX_OT_follower_rig(Operator):
                 'INVOKE_DEFAULT',
                 object_types={'ARMATURE', 'MESH'},
                 use_selection=True,
-                apply_scale_options='FBX_SCALE_ALL'
+                apply_scale_options='FBX_SCALE_ALL',
+                add_leaf_bones=False  # Uncheck "Add Leaf Bones"
             )
 
         return {'FINISHED'}
