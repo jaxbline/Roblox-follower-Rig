@@ -1,13 +1,14 @@
 bl_info = {
     "name": "Roblox Follower Rig",
     "author": "Jax",
-    "version": (1, 2),
+    "version": (1, 4),
     "blender": (4, 0, 0),
     "location": "View3D > Jax's Stuff",
-    "description": "Set up Roblox Follower Rig with custom export and material consolidation",
+    "description": "Set up Roblox Follower Rig",
     "category": "Rigging",
 }
 
+# what the fuck
 import bpy
 from bpy.types import Operator, Panel
 from bpy.props import BoolProperty
@@ -16,19 +17,15 @@ VALID_NAMES = {"LeftLeg", "RightLeg", "RightArm", "LeftArm", "Head", "Torso"}
 
 def consolidate_materials(obj):
     if len(obj.material_slots) > 0:
-        # Keep the first material and rename it
         first_material = obj.material_slots[0].material
         first_material.name = "RobloxMat"
         
-        # Remove all other materials
         for i in range(len(obj.material_slots) - 1, 0, -1):
             obj.data.materials.pop(index=i)
         
-        # Assign the remaining material to all faces
         for polygon in obj.data.polygons:
             polygon.material_index = 0
     else:
-        # If no materials, create a new one
         mat = bpy.data.materials.new(name="RobloxMat")
         obj.data.materials.append(mat)
 
@@ -97,7 +94,7 @@ class ROBLOX_OT_follower_rig(Operator):
         modifier.object = armature
         modifier.use_vertex_groups = True
         
-        # Consolidate materials
+        # basically die
         consolidate_materials(torso)
         
         self.report({'INFO'}, "Roblox Follower Rig setup complete")
@@ -131,13 +128,18 @@ class VIEW3D_PT_roblox_follower_rig(Panel):
         else:
             layout.label(text="Armature: Not Found", icon='ERROR')
         
-        selected_names = {obj.name for obj in context.selected_objects if obj.type == 'MESH'}
+        selected_objects = [obj for obj in context.selected_objects if obj.type == 'MESH']
+        selected_names = {obj.name for obj in selected_objects}
         missing_parts = VALID_NAMES - selected_names
+        invalid_names = [obj.name for obj in selected_objects if obj.name not in VALID_NAMES]
         
-        layout.label(text=f"Parts: {len(selected_names)}/{len(VALID_NAMES)} Found", icon='INFO')
+        layout.label(text=f"Parts: {len(selected_names.intersection(VALID_NAMES))}/{len(VALID_NAMES)} Found", icon='INFO')
         
         if missing_parts:
             layout.label(text=f"Missing: {', '.join(missing_parts)}", icon='ERROR')
+        
+        if invalid_names:
+            layout.label(text=f"Invalid names: {', '.join(invalid_names)}", icon='ERROR')
         
         layout.operator("object.roblox_follower_rig")
         layout.prop(context.scene, "roblox_export_when_done")
