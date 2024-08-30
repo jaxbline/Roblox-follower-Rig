@@ -19,6 +19,5 @@ https://discord.gg/htg3PWaWkU
 
 ![image](https://github.com/user-attachments/assets/264dadd0-4fb8-428b-a665-d5b61609f46d)
 
+![LobFile com-uk9u](https://github.com/user-attachments/assets/530d1bbf-9fec-4068-b93f-81c785a11d99)
 
-
-![LobFile com-Qv7V](https://github.com/user-attachments/assets/9f19cb6d-453e-439b-ada1-2c7c19dec34b)
