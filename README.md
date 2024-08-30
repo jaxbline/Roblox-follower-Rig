@@ -5,6 +5,9 @@ https://jaxbline.gumroad.com/l/rertl
 
 https://discord.gg/htg3PWaWkU
 
+# What it does?
+The plugin as a multi OBJ importer so that the user may import all 6 parts of their Roblox avatar. Once imported they have to select all the parts + armature provided with the blend file and hit the "APPLY" button which will scale the model to its proper unity size. (Optional) Check the "export when done" to automatically open the export menu with the proper settings.
+
 # Installation
 * Head to Releases and download the latest
 * Go into blender 4.0+ and head to add-ons/Plugins
