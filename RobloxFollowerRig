@@ -1,17 +1,17 @@
 bl_info = {
     "name": "Roblox Follower Rig",
     "author": "Jax",
-    "version": (1, 4),
+    "version": (1, 5),
     "blender": (4, 0, 0),
     "location": "View3D > Jax's Stuff",
-    "description": "Set up Roblox Follower Rig",
-    "category": "Rigging",
+    "description": "Set up for Roblox Follower. Making it like 10x easier to set up your follower with your own roblox character (R6 ONLY)",
 }
 
-# what the fuck
 import bpy
 from bpy.types import Operator, Panel
-from bpy.props import BoolProperty
+from bpy.props import BoolProperty, CollectionProperty, StringProperty
+from bpy_extras.io_utils import ImportHelper
+import os
 
 VALID_NAMES = {"LeftLeg", "RightLeg", "RightArm", "LeftArm", "Head", "Torso"}
 
@@ -19,10 +19,8 @@ def consolidate_materials(obj):
     if len(obj.material_slots) > 0:
         first_material = obj.material_slots[0].material
         first_material.name = "RobloxMat"
-        
         for i in range(len(obj.material_slots) - 1, 0, -1):
             obj.data.materials.pop(index=i)
-        
         for polygon in obj.data.polygons:
             polygon.material_index = 0
     else:
@@ -36,68 +34,57 @@ class ROBLOX_OT_follower_rig(Operator):
 
     def execute(self, context):
         armature = bpy.data.objects.get("Armature")
-        
         if armature is None or armature.type != 'ARMATURE':
             self.report({'ERROR'}, "No armature named 'Armature' found in the scene")
             return {'CANCELLED'}
-        
         torso = None
         parts_to_join = []
-        
         for obj in bpy.context.selected_objects:
             if obj.type != 'MESH' or obj.name not in VALID_NAMES:
                 continue
-            
             if obj.name == "Torso":
                 torso = obj
             else:
                 parts_to_join.append(obj)
-        
         if not torso:
             self.report({'ERROR'}, "No object named 'Torso' found")
             return {'CANCELLED'}
-        
         for obj in parts_to_join + [torso]:
             if obj.parent == armature:
                 obj.parent = None
-            
             bpy.ops.object.select_all(action='DESELECT')
             obj.select_set(True)
             armature.select_set(True)
             bpy.context.view_layer.objects.active = armature
-            
             bpy.ops.object.parent_set(type='ARMATURE_AUTO')
-            
             for vg in obj.vertex_groups:
                 obj.vertex_groups.remove(vg)
-            
             vertex_group = obj.vertex_groups.new(name=obj.name)
             vertex_group.add(range(len(obj.data.vertices)), 1.0, 'REPLACE')
-        
         bpy.ops.object.select_all(action='DESELECT')
         for obj in parts_to_join:
             obj.select_set(True)
         torso.select_set(True)
         bpy.context.view_layer.objects.active = torso
-        
         bpy.ops.object.join()
-        
         torso.name = "Avatar"
+        
+        bpy.ops.object.select_all(action='DESELECT')
+        armature.select_set(True)
+        bpy.context.view_layer.objects.active = armature
+        bpy.ops.transform.resize(value=(0.1, 0.1, 0.1))
+        bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
         
         if torso.parent != armature:
             torso.parent = armature
             torso.parent_type = 'ARMATURE'
-        
         modifier = torso.modifiers.get("Armature")
         if not modifier:
             modifier = torso.modifiers.new(name="Armature", type='ARMATURE')
         modifier.object = armature
         modifier.use_vertex_groups = True
-        
         consolidate_materials(torso)
-        
         self.report({'INFO'}, "Roblox Follower Rig setup complete")
-
         if context.scene.roblox_export_when_done:
             bpy.ops.object.select_all(action='DESELECT')
             armature.select_set(True)
@@ -108,9 +95,26 @@ class ROBLOX_OT_follower_rig(Operator):
                 object_types={'ARMATURE', 'MESH'},
                 use_selection=True,
                 apply_scale_options='FBX_SCALE_ALL',
-                add_leaf_bones=False  # Uncheck "Add Leaf Bones"
+                add_leaf_bones=False
             )
+        return {'FINISHED'}
 
+class ROBLOX_OT_import_parts(Operator, ImportHelper):
+    bl_idname = "import_scene.roblox_parts"
+    bl_label = "Import Parts"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    files: CollectionProperty(
+        name="File Path",
+        type=bpy.types.OperatorFileListElement,
+    )
+    directory: StringProperty(subtype='DIR_PATH')
+    filter_glob: StringProperty(default="*.obj", options={'HIDDEN'}, maxlen=255)
+
+    def execute(self, context):
+        for file in self.files:
+            filepath = os.path.join(self.directory, file.name)
+            bpy.ops.wm.obj_import(filepath=filepath)
         return {'FINISHED'}
 
 class VIEW3D_PT_roblox_follower_rig(Panel):
@@ -121,26 +125,22 @@ class VIEW3D_PT_roblox_follower_rig(Panel):
 
     def draw(self, context):
         layout = self.layout
-        
+        layout.operator("import_scene.roblox_parts", text="Import Parts", icon='IMPORT')
+        layout.separator()
         armature = bpy.data.objects.get("Armature")
         if armature and armature.select_get():
             layout.label(text="Armature: Found", icon='CHECKMARK')
         else:
             layout.label(text="Armature: Not Found", icon='ERROR')
-        
         selected_objects = [obj for obj in context.selected_objects if obj.type == 'MESH']
         selected_names = {obj.name for obj in selected_objects}
         missing_parts = VALID_NAMES - selected_names
         invalid_names = [obj.name for obj in selected_objects if obj.name not in VALID_NAMES]
-        
         layout.label(text=f"Parts: {len(selected_names.intersection(VALID_NAMES))}/{len(VALID_NAMES)} Found", icon='INFO')
-        
         if missing_parts:
             layout.label(text=f"Missing: {', '.join(missing_parts)}", icon='ERROR')
-        
         if invalid_names:
             layout.label(text=f"Invalid names: {', '.join(invalid_names)}", icon='ERROR')
-        
         layout.operator("object.roblox_follower_rig")
         layout.prop(context.scene, "roblox_export_when_done")
 
@@ -151,11 +151,13 @@ def register():
         default=False
     )
     bpy.utils.register_class(ROBLOX_OT_follower_rig)
+    bpy.utils.register_class(ROBLOX_OT_import_parts)
     bpy.utils.register_class(VIEW3D_PT_roblox_follower_rig)
 
 def unregister():
     del bpy.types.Scene.roblox_export_when_done
     bpy.utils.unregister_class(VIEW3D_PT_roblox_follower_rig)
+    bpy.utils.unregister_class(ROBLOX_OT_import_parts)
     bpy.utils.unregister_class(ROBLOX_OT_follower_rig)
 
 if __name__ == "__main__":
