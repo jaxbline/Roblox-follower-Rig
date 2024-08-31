@@ -1,10 +1,11 @@
 bl_info = {
     "name": "Roblox Follower Rig",
     "author": "Jax",
-    "version": (1, 5),
+    "version": (1, 6),
     "blender": (4, 0, 0),
     "location": "View3D > Jax's Stuff",
     "description": "Set up for Roblox Follower. Making it like 10x easier to set up your follower with your own roblox character (R6 ONLY)",
+    "category": "Rigging",
 }
 
 import bpy
@@ -12,19 +13,48 @@ from bpy.types import Operator, Panel
 from bpy.props import BoolProperty, CollectionProperty, StringProperty
 from bpy_extras.io_utils import ImportHelper
 import os
+import math
 
 VALID_NAMES = {"LeftLeg", "RightLeg", "RightArm", "LeftArm", "Head", "Torso"}
+LIMB_NAMES = {"LeftLeg", "RightLeg", "RightArm", "LeftArm"}
 
 def consolidate_materials(obj):
     if len(obj.material_slots) > 0:
-        first_material = obj.material_slots[0].material
-        first_material.name = "RobloxMat"
-        for i in range(len(obj.material_slots) - 1, 0, -1):
-            obj.data.materials.pop(index=i)
+        base_material = next((slot.material for slot in obj.material_slots if slot.material.name.startswith("Rig")), None)
+        
+        if base_material:
+            base_material.name = "RigMaterial"
+        else:
+            base_material = bpy.data.materials.new(name="RigMaterial")
+            obj.data.materials.append(base_material)
+        
+        rig_polygons = set()
+        
         for polygon in obj.data.polygons:
-            polygon.material_index = 0
+            current_mat = obj.material_slots[polygon.material_index].material
+            if current_mat.name.startswith("Rig"):
+                rig_polygons.add(polygon.index)
+        
+        for i in range(len(obj.material_slots) - 1, -1, -1):
+            mat = obj.material_slots[i].material
+            if mat.name.startswith("Rig") and mat != base_material:
+                obj.data.materials.pop(index=i)
+        
+        rig_material_index = obj.data.materials.find("RigMaterial")
+        for polygon in obj.data.polygons:
+            if polygon.index in rig_polygons:
+                polygon.material_index = rig_material_index
+      
+        for vertex_group in obj.vertex_groups:
+            if vertex_group.name in LIMB_NAMES:
+                for polygon in obj.data.polygons:
+                    for vert in polygon.vertices:
+                        for group in obj.data.vertices[vert].groups:
+                            if group.group == vertex_group.index:
+                                polygon.material_index = rig_material_index
+                                break
     else:
-        mat = bpy.data.materials.new(name="RobloxMat")
+        mat = bpy.data.materials.new(name="RigMaterial")
         obj.data.materials.append(mat)
 
 class ROBLOX_OT_follower_rig(Operator):
@@ -73,7 +103,8 @@ class ROBLOX_OT_follower_rig(Operator):
         armature.select_set(True)
         bpy.context.view_layer.objects.active = armature
         bpy.ops.transform.resize(value=(0.1, 0.1, 0.1))
-        bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+        bpy.ops.transform.rotate(value=math.radians(180), orient_axis='Z')
+        bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
         
         if torso.parent != armature:
             torso.parent = armature
